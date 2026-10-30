@@ -104,6 +104,17 @@ class MainActivity : ComponentActivity() {
     private data class Moving(val id: String, val section: Section)
     private var moving: Moving? = null
 
+    /** Dialogs on screen (menus, settings, updates), so Home can close them. */
+    private val openDialogs = mutableListOf<AlertDialog>()
+
+    /** AlertDialog.Builder that records the dialogs it makes in [openDialogs]. */
+    private inner class DialogBuilder : AlertDialog.Builder(this@MainActivity) {
+        override fun create(): AlertDialog = super.create().also { dialog ->
+            openDialogs.removeAll { !it.isShowing }
+            openDialogs += dialog
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -131,7 +142,10 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // Home pressed while already home.
+        // Home pressed while already home: close any menu or dialog, then back to the top.
+        // Cancel rather than dismiss, so they act as if Back was pressed (e.g. setup's "Later").
+        openDialogs.forEach { it.cancel() }
+        openDialogs.clear()
         scrollToTop()
         applyConfigIntent(intent)
     }
@@ -197,11 +211,11 @@ class MainActivity : ComponentActivity() {
         fun skip(pkg: String) {
             prefs.importWanted = prefs.importWanted - pkg
         }
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(R.string.setup_title)
             .setItems(pending.map { labels[it] ?: it }.toTypedArray()) { _, which ->
                 val pkg = pending[which]
-                AlertDialog.Builder(this)
+                DialogBuilder()
                     .setTitle(labels[pkg] ?: pkg)
                     .setItems(arrayOf(getString(R.string.setup_install), getString(R.string.setup_skip))) { _, choice ->
                         if (choice == 0) {
@@ -328,11 +342,11 @@ class MainActivity : ComponentActivity() {
     private fun addCameraAfter(afterId: String) {
         val onDashboard = sectionOrder(Section.APPS).filter(HomeItem::isCamera).map(HomeItem::cameraIdOf).toSet()
         val choices = cameras.filter { it.id !in onDashboard }
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(R.string.pick_camera)
             .setItems(choices.map { it.name }.toTypedArray()) { _, which ->
                 val camera = choices[which]
-                AlertDialog.Builder(this)
+                DialogBuilder()
                     .setTitle(R.string.pick_size)
                     .setItems(arrayOf(getString(R.string.size_small), getString(R.string.size_large))) { _, size ->
                         prefs.cameraSizes = prefs.cameraSizes + (camera.id to size + 1)
@@ -562,7 +576,7 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, getString(R.string.cannot_open, getString(R.string.action_updates)), Toast.LENGTH_SHORT).show()
             return
         }
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(R.string.action_updates)
             .setItems(entries.map { it.first }.toTypedArray()) { _, which -> entries[which].second() }
             .show()
@@ -585,7 +599,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this@MainActivity, getString(R.string.update_none, BuildConfig.VERSION_CODE), Toast.LENGTH_LONG).show()
                 return@launch
             }
-            AlertDialog.Builder(this@MainActivity)
+            DialogBuilder()
                 .setTitle(getString(R.string.update_available, release.versionCode))
                 .setMessage(getString(R.string.update_message, BuildConfig.VERSION_CODE))
                 .setPositiveButton(R.string.update_install) { _, _ -> installTvDashUpdate(release) }
@@ -596,7 +610,7 @@ class MainActivity : ComponentActivity() {
 
     /** Shows download progress; once installed, Android restarts TvDash on the new build. */
     private fun installTvDashUpdate(release: SelfUpdate.Release) {
-        val progress = AlertDialog.Builder(this)
+        val progress = DialogBuilder()
             .setTitle(getString(R.string.update_downloading, release.versionCode))
             .setMessage(" ")
             .setCancelable(false)
@@ -680,7 +694,7 @@ class MainActivity : ComponentActivity() {
             else -> return
         }
 
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(title)
             .setItems(options.map { getString(it.first) }.toTypedArray()) { _, which ->
                 render(focusKey = options[which].second())
@@ -707,7 +721,7 @@ class MainActivity : ComponentActivity() {
             }
             render(focusKey = item.key)
         }
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(getString(R.string.rename_title, item.input.label))
             .setView(field)
             .setPositiveButton(R.string.save) { _, _ ->
@@ -741,7 +755,7 @@ class MainActivity : ComponentActivity() {
         }
         val pending = pendingInstalls()
         if (pending.isNotEmpty()) entries.add(0, getString(R.string.settings_finish_setup, pending.size) to ::showSetup)
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(R.string.action_launcher)
             .setItems(entries.map { it.first }.toTypedArray()) { _, which -> entries[which].second() }
             .show()
@@ -769,7 +783,7 @@ class MainActivity : ComponentActivity() {
             addView(stationField)
             addView(keyField)
         }
-        val builder = AlertDialog.Builder(this)
+        val builder = DialogBuilder()
             .setTitle(R.string.wu_title)
             .setView(form)
             .setPositiveButton(R.string.save) { _, _ ->
@@ -826,7 +840,7 @@ class MainActivity : ComponentActivity() {
     private fun pickScreensaverDelay() {
         val labels = SCREENSAVER_DELAYS.map(::screensaverLabel)
         val current = SCREENSAVER_DELAYS.indexOf(currentScreensaverDelay())
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(R.string.screensaver_title)
             .setSingleChoiceItems(labels.toTypedArray(), current) { dialog, which ->
                 dialog.dismiss()
@@ -854,7 +868,7 @@ class MainActivity : ComponentActivity() {
     private fun pickScreensaverCamera() {
         val names = listOf(getString(R.string.screensaver_no_camera)) + cameras.map { it.name }
         val current = cameras.indexOfFirst { it.id == prefs.screensaverCamera } + 1
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(R.string.screensaver_camera_title)
             .setSingleChoiceItems(names.toTypedArray(), current) { dialog, which ->
                 prefs.screensaverCamera = if (which == 0) null else cameras[which - 1].id
@@ -882,7 +896,7 @@ class MainActivity : ComponentActivity() {
     private fun uncheckToUnhide(title: String, entries: List<Pair<String, String>>, save: (Set<String>) -> Unit) {
         if (entries.isEmpty()) return
         val checked = BooleanArray(entries.size) { true }
-        AlertDialog.Builder(this)
+        DialogBuilder()
             .setTitle(title)
             .setMultiChoiceItems(entries.map { it.second }.toTypedArray(), checked) { _, which, isChecked ->
                 checked[which] = isChecked
@@ -901,7 +915,7 @@ class MainActivity : ComponentActivity() {
             imeOptions = EditorInfo.IME_ACTION_SEARCH
             setSingleLine()
         }
-        val dialog = AlertDialog.Builder(this)
+        val dialog = DialogBuilder()
             .setTitle(R.string.weather_set_location)
             .setView(input)
             .setPositiveButton(R.string.search) { _, _ -> searchLocation(input.text.toString()) }
@@ -932,7 +946,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this@MainActivity, R.string.location_none_found, Toast.LENGTH_SHORT).show()
                 return@launch
             }
-            AlertDialog.Builder(this@MainActivity)
+            DialogBuilder()
                 .setTitle(R.string.weather_set_location)
                 .setItems(results.map { it.name }.toTypedArray()) { _, which ->
                     prefs.location = results[which]
