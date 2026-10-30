@@ -29,6 +29,13 @@ object SelfUpdate {
 
     val isAvailable: Boolean get() = BuildConfig.UPDATE_REPO.isNotEmpty()
 
+    /**
+     * An update is downloading or waiting on the installer; starting another would race it.
+     * Cleared when it fails. On success Android restarts TvDash, which clears it.
+     */
+    @Volatile
+    var inProgress = false
+
     /** The newest published build, or null if there's none with an APK. */
     suspend fun latest(): Release? = withContext(Dispatchers.IO) {
         val conn = URL("https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases/latest")
@@ -122,6 +129,8 @@ class UpdateStatusReceiver : BroadcastReceiver() {
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> {
+                // Includes the user declining Android's confirmation; they can try again.
+                SelfUpdate.inProgress = false
                 val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                 Log.w("TvDash", "Update failed ($status): $message")
                 Toast.makeText(context, context.getString(R.string.update_failed, message ?: status.toString()), Toast.LENGTH_LONG).show()

@@ -28,6 +28,7 @@
     <string name="update_downloading">Downloading TvDash build %1$d</string>
     <string name="update_installing">Installing…</string>
     <string name="update_failed">TvDash update failed: %1$s</string>
+    <string name="update_in_progress">A TvDash update is already installing</string>
     <string name="screensaver_name">TvDash clock</string>
     <string name="settings_screensaver">Screensaver: %1$s</string>
     <string name="screensaver_title">Start screensaver after</string>

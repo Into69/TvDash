@@ -2,6 +2,7 @@ package dev.tvdash.launcher
 
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
+import android.content.DialogInterface
 import android.content.Intent
 import android.media.tv.TvInputManager
 import android.net.ConnectivityManager
@@ -107,11 +108,27 @@ class MainActivity : ComponentActivity() {
     /** Dialogs on screen (menus, settings, updates), so Home can close them. */
     private val openDialogs = mutableListOf<AlertDialog>()
 
-    /** AlertDialog.Builder that records the dialogs it makes in [openDialogs]. */
+    /** Counts Home presses, so work that finishes after one doesn't pop a dialog up afterwards. */
+    private var homePresses = 0
+
+    /**
+     * AlertDialog.Builder whose dialogs Home closes: they're in [openDialogs] from creation until
+     * dismissed. Every home-screen dialog should use it (a plain AlertDialog.Builder stays open).
+     */
     private inner class DialogBuilder : AlertDialog.Builder(this@MainActivity) {
+        private var onDismiss: DialogInterface.OnDismissListener? = null
+
+        override fun setOnDismissListener(listener: DialogInterface.OnDismissListener?): AlertDialog.Builder {
+            onDismiss = listener
+            return this
+        }
+
         override fun create(): AlertDialog = super.create().also { dialog ->
-            openDialogs.removeAll { !it.isShowing }
             openDialogs += dialog
+            dialog.setOnDismissListener {
+                openDialogs -= dialog
+                onDismiss?.onDismiss(it)
+            }
         }
     }
 
@@ -142,10 +159,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        // Home pressed while already home: close any menu or dialog, then back to the top.
-        // Cancel rather than dismiss, so they act as if Back was pressed (e.g. setup's "Later").
-        openDialogs.forEach { it.cancel() }
-        openDialogs.clear()
+        // Home pressed while already home (tv.ps1's config intents come here too, without HOME):
+        // close any menu or dialog, then back to the top. Cancel rather than dismiss, so they act
+        // as if Back was pressed (e.g. setup's "Later").
+        if (intent.hasCategory(Intent.CATEGORY_HOME)) {
+            homePresses++
+            openDialogs.toList().forEach { it.cancel() }
+        }
         scrollToTop()
         applyConfigIntent(intent)
     }
@@ -583,6 +603,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkForTvDashUpdate() {
+        if (SelfUpdate.inProgress) {
+            Toast.makeText(this, R.string.update_in_progress, Toast.LENGTH_LONG).show()
+            return
+        }
+        val pressesBefore = homePresses
         lifecycleScope.launch {
             val release = try {
                 SelfUpdate.latest()
@@ -599,6 +624,8 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this@MainActivity, getString(R.string.update_none, BuildConfig.VERSION_CODE), Toast.LENGTH_LONG).show()
                 return@launch
             }
+            // Home was pressed while checking: don't pop the offer up over the home screen.
+            if (homePresses != pressesBefore) return@launch
             DialogBuilder()
                 .setTitle(getString(R.string.update_available, release.versionCode))
                 .setMessage(getString(R.string.update_message, BuildConfig.VERSION_CODE))
@@ -608,9 +635,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Shows download progress; once installed, Android restarts TvDash on the new build. */
+    /**
+     * Shows download progress; once installed, Android restarts TvDash on the new build. The
+     * progress dialog isn't a [DialogBuilder] one: Home leaves it up, since the update carries on.
+     */
     private fun installTvDashUpdate(release: SelfUpdate.Release) {
-        val progress = DialogBuilder()
+        if (SelfUpdate.inProgress) return
+        SelfUpdate.inProgress = true
+        val progress = AlertDialog.Builder(this)
             .setTitle(getString(R.string.update_downloading, release.versionCode))
             .setMessage(" ")
             .setCancelable(false)
@@ -620,8 +652,12 @@ class MainActivity : ComponentActivity() {
                 SelfUpdate.install(this@MainActivity, release) { percent ->
                     if (percent >= 0) progress.setMessage("$percent%")
                 }
-                progress.setMessage(getString(R.string.update_installing))
+                // Android has it now: it restarts TvDash when done, or UpdateStatusReceiver reports
+                // a failure (or a declined confirmation), so there's nothing left to wait for here.
+                progress.dismiss()
+                Toast.makeText(this@MainActivity, R.string.update_installing, Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
+                SelfUpdate.inProgress = false
                 Log.w(TAG, "Update download failed", e)
                 progress.dismiss()
                 Toast.makeText(this@MainActivity, getString(R.string.update_failed, e.message ?: e.javaClass.simpleName), Toast.LENGTH_LONG).show()
@@ -934,6 +970,7 @@ class MainActivity : ComponentActivity() {
 
     private fun searchLocation(query: String) {
         if (query.isBlank()) return
+        val pressesBefore = homePresses
         lifecycleScope.launch {
             val results = try {
                 WeatherClient.search(query.trim())
@@ -946,6 +983,7 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this@MainActivity, R.string.location_none_found, Toast.LENGTH_SHORT).show()
                 return@launch
             }
+            if (homePresses != pressesBefore) return@launch
             DialogBuilder()
                 .setTitle(R.string.weather_set_location)
                 .setItems(results.map { it.name }.toTypedArray()) { _, which ->
