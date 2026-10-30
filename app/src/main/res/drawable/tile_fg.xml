@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawn over the tile so it shows on top of full-bleed app banners. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Picked up for rearranging. -->
+    <item android:state_activated="true">
+        <shape>
+            <corners android:radius="10dp" />
+            <solid android:color="#335E9CFF" />
+            <stroke android:width="5dp" android:color="@color/moving" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape>
+            <corners android:radius="10dp" />
+            <stroke android:width="4dp" android:color="@color/accent" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

@@ -1,0 +1,11 @@
+<!-- A circular arrow around a down arrow: "get updates". -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#ECEFF4" android:strokeWidth="1.8" android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M20,12a8,8 0,1 1,-2.34 -5.66 M20,4v4h-4" />
+    <path android:strokeColor="#ECEFF4" android:strokeWidth="1.8" android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M12,8v7 M9,12.5l3,3l3,-3" />
+</vector>

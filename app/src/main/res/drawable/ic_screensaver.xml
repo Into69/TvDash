@@ -1,0 +1,7 @@
+<!-- Crescent moon: "start the screensaver now". -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp" android:height="32dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#ECEFF4"
+        android:pathData="M12.3,3.05A9,9 0 1,0 20.95,11.7A7,7 0 0,1 12.3,3.05z" />
+</vector>

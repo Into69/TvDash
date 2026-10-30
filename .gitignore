@@ -1,0 +1,9 @@
+.gradle/
+build/
+local.properties
+# Exported TV layouts (can include a Weather Underground key).
+layouts/
+.idea/
+*.iml
+# TV crash reports (include serial numbers).
+diagnostics/

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- To show an Ethernet tile instead of Wi-Fi on wired TVs. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- For the Logs tile (restart reasons, crashes). Not grantable in-app; tools/tv.ps1 grants them over adb. -->
+    <uses-permission android:name="android.permission.READ_LOGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <!-- Screensaver delay (system screen_off_timeout) and on/off (secure screensaver_enabled); granted by tools/tv.ps1. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
+
+    <!-- Self-update from GitHub releases (Updates tile); tools/tv.ps1 install allows it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.software.live_tv" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- Android 11+ package visibility: needed to list launchable apps. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- The Updates tile offers whichever of these update screens the TV has. -->
+        <intent>
+            <action android:name="android.settings.SYSTEM_UPDATE_SETTINGS" />
+        </intent>
+        <intent>
+            <action android:name="com.google.android.finsky.VIEW_MY_DOWNLOADS" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".TvDashApp"
+        android:allowBackup="false"
+        android:banner="@drawable/banner"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.TvDash">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Enabled over adb (tools/tv.ps1 install) so TvDash can read what media apps are playing. -->
+        <service
+            android:name=".MediaListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Screensaver; tools/tv.ps1 install selects it in place of Google TV's Ambient mode. -->
+        <service
+            android:name=".TvDashDream"
+            android:exported="true"
+            android:label="@string/screensaver_name"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <!-- tools/tv.ps1 export: writes the layout to app storage for the script to read back. -->
+        <receiver
+            android:name=".LayoutExportReceiver"
+            android:exported="true" />
+
+        <!-- tools/tv.ps1 install: keys and addresses from local.properties. Only the shell holds
+             WRITE_SECURE_SETTINGS among senders, so other apps can't change them. -->
+        <receiver
+            android:name=".DeviceConfigReceiver"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS" />
+
+        <!-- Results of a self-update install session. -->
+        <receiver
+            android:name=".UpdateStatusReceiver"
+            android:exported="false" />
+
+        <!-- The screensaver on demand, from the Now playing bar. -->
+        <activity
+            android:name=".ScreensaverActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.TvDash" />
+
+        <activity
+            android:name=".LogsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.TvDash" />
+
+        <activity
+            android:name=".CameraActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.TvDash" />
+    </application>
+</manifest>

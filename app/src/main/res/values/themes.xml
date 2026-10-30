@@ -1,0 +1,33 @@
+<resources>
+    <style name="Theme.TvDash" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
+    <style name="WeatherLine">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:textColor">@color/text_dim</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <!-- Screensaver text: a touch larger, with a shadow for legibility over camera pictures. -->
+    <style name="DreamLine" parent="WeatherLine">
+        <item name="android:ellipsize">end</item>
+        <item name="android:shadowColor">@android:color/black</item>
+        <item name="android:shadowRadius">6</item>
+        <item name="android:textColor">#FFC9D1DC</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="NowPlayingButton">
+        <item name="android:layout_width">52dp</item>
+        <item name="android:layout_height">52dp</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:background">@drawable/chip_bg</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+</resources>

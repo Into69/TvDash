@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Evenly darkens the camera picture: the screensaver's text moves anywhere on screen, so it
+     needs the same contrast everywhere (the text also has its own shadow). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#80000000" />
+</shape>

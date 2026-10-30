@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TvDash screensaver: clock, weather and what's playing, centred on black; with a camera picked,
+     its picture fills the screen and the details sit bottom-left over a shade. The details block
+     drifts a little each minute to spare OLED panels. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- Live video; the snapshot ImageView above it covers the gap until the first frame. -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/dream_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:resize_mode="zoom"
+        app:shutter_background_color="@android:color/black"
+        app:use_controller="false" />
+
+    <ImageView
+        android:id="@+id/dream_camera"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <!-- Keeps the text readable over a bright camera picture. -->
+    <View
+        android:id="@+id/dream_shade"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/dream_shade"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/dream_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="72dp"
+        android:orientation="vertical">
+
+        <TextClock
+            android:id="@+id/clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:format12Hour="h:mm"
+            android:format24Hour="H:mm"
+            android:shadowColor="@android:color/black"
+            android:shadowRadius="12"
+            android:textColor="@color/text"
+            android:textSize="110sp" />
+
+        <TextClock
+            android:id="@+id/date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:format12Hour="EEEE, MMMM d"
+            android:format24Hour="EEEE, MMMM d"
+            android:shadowColor="@android:color/black"
+            android:shadowRadius="8"
+            android:textColor="@color/text"
+            android:textSize="26sp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/weather_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="44sp" />
+
+            <TextView
+                android:id="@+id/weather_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:shadowColor="@android:color/black"
+                android:shadowRadius="8"
+                android:textColor="@color/text"
+                android:textSize="56sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="24dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/weather_now"
+                    style="@style/DreamLine"
+                    android:textColor="@color/text" />
+
+                <TextView
+                    android:id="@+id/weather_today"
+                    style="@style/DreamLine" />
+
+                <TextView
+                    android:id="@+id/weather_place"
+                    style="@style/DreamLine" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Same ids as the home screen's bar, so NowPlaying can drive it; no buttons here. -->
+        <LinearLayout
+            android:id="@+id/now_playing"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/np_art"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:id="@+id/np_info"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/np_title"
+                    style="@style/DreamLine"
+                    android:maxWidth="560dp"
+                    android:textColor="@color/text"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/np_subtitle"
+                    style="@style/DreamLine"
+                    android:maxWidth="560dp" />
+            </LinearLayout>
+
+            <ImageButton android:id="@+id/np_prev" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+            <ImageButton android:id="@+id/np_play" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+            <ImageButton android:id="@+id/np_next" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

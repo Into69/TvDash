@@ -1,0 +1,11 @@
+<resources>
+    <color name="bg">#FF0E1116</color>
+    <color name="tile">#FF1C222B</color>
+    <color name="tile_focused">#FF2A3340</color>
+    <color name="text">#FFECEFF4</color>
+    <color name="text_dim">#FF8C96A5</color>
+    <color name="accent">#FFFFFFFF</color>
+    <color name="moving">#FF5E9CFF</color>
+    <color name="on">#FF4ADE80</color>
+    <color name="divider">#FF2A3340</color>
+</resources>
