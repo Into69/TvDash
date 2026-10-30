@@ -487,7 +487,7 @@ class MainActivity : ComponentActivity() {
                 add(HomeItem.Header(getString(R.string.section_favorites)))
                 addAll(favorites)
             }
-            add(HomeItem.Header(getString(R.string.section_apps)))
+            // No header: the apps follow straight on from the weather (or Favorites).
             addAll(tiles(Section.APPS))
 
             add(HomeItem.Header(getString(R.string.section_system)))
