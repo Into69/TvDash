@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # SHA-256 of the signing certificate in DEBUG_KEYSTORE_BASE64 (public; identifies the key).
+  SIGNING_CERT_SHA256: 28e445a784f17cc721b1548dad4f74379b45eb3057b61cec4be18f1df73a3f11
+
 concurrency:
   group: release
   cancel-in-progress: false
@@ -39,13 +43,23 @@ jobs:
             echo "::error::Set the DEBUG_KEYSTORE_BASE64 secret, or the TVs will refuse this build."
             exit 1
           fi
-          mkdir -p ~/.android
-          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/debug.keystore"
+          echo "TVDASH_DEBUG_KEYSTORE=$RUNNER_TEMP/debug.keystore" >> "$GITHUB_ENV"
 
       - name: Build
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug -Ptvdash.updateRepo=${{ github.repository }}
+
+      # Never publish an APK the TVs would refuse: its certificate must be the TVs' signing key.
+      - name: Check signature
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          actual=$("$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          if [ "$actual" != "$SIGNING_CERT_SHA256" ]; then
+            echo "::error::APK signed with $actual, expected $SIGNING_CERT_SHA256. Check DEBUG_KEYSTORE_BASE64."
+            exit 1
+          fi
 
       - name: Publish
         env:

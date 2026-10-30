@@ -28,6 +28,14 @@ android {
         buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("tvdash.updateRepo").getOrElse("")}\"")
     }
 
+    signingConfigs {
+        // CI signs with the same debug key as the TVs' builds (TVs only accept updates signed alike).
+        // Set explicitly: on CI runners the build tools may look elsewhere and make a new key.
+        getByName("debug") {
+            System.getenv("TVDASH_DEBUG_KEYSTORE")?.let { storeFile = file(it) }
+        }
+    }
+
     buildFeatures {
         buildConfig = true
     }
