@@ -54,6 +54,30 @@ android {
     }
 }
 
+/**
+ * Home closes dialogs made with MainActivity's DialogBuilder; a plain AlertDialog.Builder would
+ * stay on screen. Fails the build (locally and in CI, so no release) on any plain one, unless its
+ * line says why with a "home-ok:" comment.
+ */
+val checkDialogs by tasks.registering {
+    val sources = fileTree("src/main/java") { include("**/*.kt") }
+    inputs.files(sources)
+    doLast {
+        val offenders = sources.files.sortedBy { it.name }.flatMap { file ->
+            file.readLines().mapIndexedNotNull { i, line ->
+                "${file.name}:${i + 1}".takeIf { "AlertDialog.Builder(" in line && "home-ok:" !in line }
+            }
+        }
+        if (offenders.isNotEmpty()) {
+            throw GradleException(
+                "Plain AlertDialog.Builder, which Home won't close: ${offenders.joinToString()}. " +
+                    "Use DialogBuilder(), or add a \"// home-ok: <reason>\" comment on that line.",
+            )
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(checkDialogs) }
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-ktx:1.9.3")

@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
      * AlertDialog.Builder whose dialogs Home closes: they're in [openDialogs] from creation until
      * dismissed. Every home-screen dialog should use it (a plain AlertDialog.Builder stays open).
      */
-    private inner class DialogBuilder : AlertDialog.Builder(this@MainActivity) {
+    private inner class DialogBuilder : AlertDialog.Builder(this@MainActivity) { // home-ok: the tracking builder itself
         private var onDismiss: DialogInterface.OnDismissListener? = null
 
         override fun setOnDismissListener(listener: DialogInterface.OnDismissListener?): AlertDialog.Builder {
@@ -642,7 +642,7 @@ class MainActivity : ComponentActivity() {
     private fun installTvDashUpdate(release: SelfUpdate.Release) {
         if (SelfUpdate.inProgress) return
         SelfUpdate.inProgress = true
-        val progress = AlertDialog.Builder(this)
+        val progress = AlertDialog.Builder(this) // home-ok: the update carries on, so Home leaves it up
             .setTitle(getString(R.string.update_downloading, release.versionCode))
             .setMessage(" ")
             .setCancelable(false)
