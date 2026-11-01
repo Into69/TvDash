@@ -24,8 +24,8 @@ import java.io.IOException
 
 /**
  * Live video from a Protect camera into [video], with snapshots in [still] (drawn on top) until
- * the first frame arrives and whenever the stream fails. Muted: camera microphones shouldn't
- * play over the TV.
+ * the first frame arrives and whenever the stream fails. Silent: the fullscreen view plays the
+ * camera's sound separately ([CameraSound]) when asked.
  */
 @OptIn(UnstableApi::class)
 class CameraFeed(
@@ -38,6 +38,14 @@ class CameraFeed(
     private var player: ExoPlayer? = null
     private var job: Job? = null
     private var live = false
+
+    /** The stream being played, once Protect has given one; null while connecting or if there's none. */
+    var streamUrl: String? = null
+        private set
+
+    /** True once Protect answered with no stream: snapshots only, from now on. */
+    var noStream = false
+        private set
 
     fun start(scope: CoroutineScope) {
         // The video surface has to be visible to be created; the still image covers it until it plays.
@@ -54,6 +62,8 @@ class CameraFeed(
                 Log.w(TAG, "Unexpected stream info for camera $cameraId", e)
                 null
             }
+            streamUrl = url
+            noStream = url == null
             if (url != null) play(url)
         }
     }

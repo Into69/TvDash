@@ -18,7 +18,8 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 
-data class Camera(val id: String, val name: String, val type: String)
+/** [micOn]: the camera has a microphone and it's enabled in Protect, so its stream can carry sound. */
+data class Camera(val id: String, val name: String, val type: String, val micOn: Boolean = false)
 
 /** The console's address, an API key, and the SHA-256 of its self-signed certificate. */
 data class UnifiConfig(val host: String, val apiKey: String, val certSha256: String)
@@ -44,7 +45,8 @@ object ProtectClient {
         val json = JSONArray(String(get("/cameras")))
         (0 until json.length()).map { i ->
             val c = json.getJSONObject(i)
-            Camera(c.getString("id"), c.getString("name"), c.optString("type"))
+            val hasMic = c.optJSONObject("featureFlags")?.optBoolean("hasMic") == true
+            Camera(c.getString("id"), c.getString("name"), c.optString("type"), hasMic && c.optBoolean("isMicEnabled", true))
         }
     }
 
