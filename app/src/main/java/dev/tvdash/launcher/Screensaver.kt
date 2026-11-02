@@ -77,7 +77,7 @@ class Screensaver(private val context: Context, private val root: View) {
         scope.launch {
             while (isActive) {
                 WeatherFeed.bind(root, feed.load())
-                delay(feed.refreshIntervalMs)
+                delay(feed.nextRefreshInMs())
             }
         }
         scope.launch { drift() }

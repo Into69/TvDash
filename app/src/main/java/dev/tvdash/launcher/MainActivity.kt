@@ -275,7 +275,7 @@ class MainActivity : ComponentActivity() {
         weatherJob = lifecycleScope.launch {
             while (isActive) {
                 refreshWeather()
-                delay(weatherFeed.refreshIntervalMs)
+                delay(weatherFeed.nextRefreshInMs())
             }
         }
         if (ProtectClient.isConfigured) {

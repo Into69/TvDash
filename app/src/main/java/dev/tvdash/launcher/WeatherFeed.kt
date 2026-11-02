@@ -8,12 +8,17 @@ import android.widget.TextView
 import androidx.core.view.isVisible
 import org.json.JSONException
 import java.io.IOException
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 /**
  * Loads and formats the weather for the home screen and the screensaver: a Weather Underground
  * station when one is set (plus Open-Meteo for what a station can't provide), otherwise Open-Meteo.
+ *
+ * Both screens share one reading per process ([latest]), so they always agree: whichever asks
+ * first after the refresh interval fetches it, and the other shows the same.
  */
 class WeatherFeed(private val context: Context, private val prefs: Prefs) {
 
@@ -26,24 +31,48 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
         val now: String,
         val today: String,
         val place: String,
-        val hours: String,
+        /** All forecast hours fetched; [bind] shows the next few from the current time. */
+        val hours: List<HourForecast>,
         val timeZone: String?,
     ) : Result()
 
     /** Nothing to show (no key, station offline, no network): just this message. */
     data class Message(val text: String) : Result()
 
-    /** Station forecast, kept for [FORECAST_CACHE_MS] to spare the Weather Underground quota. */
-    private var stationForecast: Triple<String, Long, Forecast>? = null
-
     /** How long until the next refresh: stations report every few minutes, the model far less often. */
     val refreshIntervalMs get() = if (prefs.wuStation != null) STATION_INTERVAL_MS else WEATHER_INTERVAL_MS
 
-    fun clearCache() {
-        stationForecast = null
+    /** Until the shared reading is due a refresh, so both screens refresh together rather than drifting. */
+    fun nextRefreshInMs(): Long {
+        val cached = latest?.takeIf { it.key == settingsKey() } ?: return refreshIntervalMs
+        val remaining = refreshIntervalMs - (SystemClock.elapsedRealtime() - cached.at)
+        // Overdue means the refresh just failed: wait a full interval, as before, to spare the quota.
+        return if (remaining <= 0) refreshIntervalMs else remaining.coerceAtLeast(MIN_WAIT_MS)
     }
 
+    fun clearCache() {
+        latest = null
+        outlook = null
+    }
+
+    /** The shared reading if it's current for these settings, otherwise a fresh one (then shared). */
     suspend fun load(): Result {
+        val key = settingsKey()
+        latest?.let { if (it.key == key && SystemClock.elapsedRealtime() - it.at < refreshIntervalMs) return it.display }
+        val result = fetch()
+        // Failures aren't shared, so the next ask tries again.
+        if (result is Display) latest = Cached(key, SystemClock.elapsedRealtime(), result)
+        return result
+    }
+
+    /** Anything that changes what's shown: source, place, units. */
+    private fun settingsKey(): String {
+        val source = prefs.wuStation?.let { "wu:${it.stationId}:${it.apiKey.hashCode()}" }
+            ?: prefs.location?.let { "om:${it.latitude},${it.longitude}:${it.name}" }
+        return "$source:${prefs.fahrenheit}"
+    }
+
+    private suspend fun fetch(): Result {
         val station = prefs.wuStation
         if (station != null) {
             return try {
@@ -113,35 +142,41 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
             today = todayLine(forecast),
             place = listOfNotNull(place.ifEmpty { null }, wind, humidity?.let { context.getString(R.string.weather_humidity, it) })
                 .joinToString(SEPARATOR),
-            hours = forecast?.let(::formatHours).orEmpty(),
+            hours = forecast?.hours.orEmpty(),
             timeZone = forecast?.timeZone,
         )
     }
 
     /**
-     * Hourly from Open-Meteo at the station's location (the PWS key can't get hourly), with the
-     * high/low and precipitation from Weather Underground's daily forecast when it answers.
+     * Hourly and the current sky from Open-Meteo at the station's location (the PWS key can't get
+     * hourly), fetched with every reading so they stay current, with the high/low and precipitation
+     * from Weather Underground's daily forecast, kept for [OUTLOOK_CACHE_MS] to spare its quota.
      */
     private suspend fun stationForecast(station: WuStation, reading: StationReading): Forecast? {
-        val cacheKey = "${station.stationId}:${prefs.fahrenheit}"
-        stationForecast?.let { (key, at, forecast) ->
-            if (key == cacheKey && SystemClock.elapsedRealtime() - at < FORECAST_CACHE_MS) return forecast
-        }
         return try {
             val forecast = WeatherClient.forecast(reading.latitude, reading.longitude, prefs.fahrenheit)
-            val outlook = try {
-                WundergroundClient.todayOutlook(reading.latitude, reading.longitude, station.apiKey, prefs.fahrenheit)
-            } catch (e: IOException) {
-                null
-            } catch (e: JSONException) {
-                null
-            }
+            val outlook = stationOutlook(station, reading)
             forecast.copy(
                 high = outlook?.high ?: forecast.high,
                 low = outlook?.low ?: forecast.low,
                 precipChance = outlook?.precipChance ?: forecast.precipChance,
                 precip = outlook?.precip ?: forecast.precip,
-            ).also { stationForecast = Triple(cacheKey, SystemClock.elapsedRealtime(), it) }
+            )
+        } catch (e: IOException) {
+            null
+        } catch (e: JSONException) {
+            null
+        }
+    }
+
+    private suspend fun stationOutlook(station: WuStation, reading: StationReading): WundergroundClient.Outlook? {
+        val cacheKey = "${station.stationId}:${prefs.fahrenheit}"
+        outlook?.let { (key, at, cached) ->
+            if (key == cacheKey && SystemClock.elapsedRealtime() - at < OUTLOOK_CACHE_MS) return cached
+        }
+        return try {
+            WundergroundClient.todayOutlook(reading.latitude, reading.longitude, station.apiKey, prefs.fahrenheit)
+                .also { outlook = Triple(cacheKey, SystemClock.elapsedRealtime(), it) }
         } catch (e: IOException) {
             null
         } catch (e: JSONException) {
@@ -169,15 +204,9 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
         }
     }.joinToString(SEPARATOR)
 
-    /** "7 PM ☁️ 5°     8 PM 🌙 4°  …", following the TV's 12/24-hour setting. */
-    private fun formatHours(forecast: Forecast): String {
-        val pattern = DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(context)) "H:mm" else "h a")
-        return forecast.hours.joinToString("     ") { hour ->
-            "${hour.time.format(pattern)} ${WeatherClient.icon(hour.code, hour.isDay)} ${hour.temperature.roundToInt()}°"
-        }
-    }
-
     private fun string(id: Int) = context.getString(id)
+
+    private class Cached(val key: String, val at: Long, val display: Display)
 
     companion object {
         private const val SEPARATOR = "  ·  "
@@ -186,7 +215,27 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
         private const val RAIN_CODE = 63
         private const val WEATHER_INTERVAL_MS = 30 * 60 * 1000L
         private const val STATION_INTERVAL_MS = 10 * 60 * 1000L
-        private const val FORECAST_CACHE_MS = 30 * 60 * 1000L
+        private const val OUTLOOK_CACHE_MS = 30 * 60 * 1000L
+        private const val MIN_WAIT_MS = 5 * 1000L
+        private const val HOURS_SHOWN = 5
+
+        /** The reading both screens show (the screensaver and dream run in the app's process). */
+        @Volatile
+        private var latest: Cached? = null
+
+        /** Weather Underground's daily outlook, the one part not refreshed with every reading. */
+        @Volatile
+        private var outlook: Triple<String, Long, WundergroundClient.Outlook>? = null
+
+        /** "7 PM ☁️ 5°     8 PM 🌙 4°  …" from the hour after now, following the TV's 12/24-hour setting. */
+        private fun formatHours(context: Context, display: Display): String {
+            val zone = display.timeZone?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: ZoneId.systemDefault()
+            val now = LocalDateTime.now(zone)
+            val pattern = DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(context)) "H:mm" else "h a")
+            return display.hours.filter { it.time.isAfter(now) }.take(HOURS_SHOWN).joinToString("     ") { hour ->
+                "${hour.time.format(pattern)} ${WeatherClient.icon(hour.code, hour.isDay)} ${hour.temperature.roundToInt()}°"
+            }
+        }
 
         /**
          * Fills the weather views under [root] (ids weather_icon, weather_temp, weather_now,
@@ -210,8 +259,9 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
                     today.isVisible = result.today.isNotEmpty()
                     place.text = result.place
                     place.isVisible = result.place.isNotEmpty()
-                    hourly?.text = result.hours
-                    hourly?.isVisible = result.hours.isNotEmpty()
+                    val hours = formatHours(root.context, result)
+                    hourly?.text = hours
+                    hourly?.isVisible = hours.isNotEmpty()
                 }
                 is Message -> {
                     icon.isVisible = false

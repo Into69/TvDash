@@ -81,8 +81,8 @@ data class Weather(
 
 /** Open-Meteo: free, no API key, no account. */
 object WeatherClient {
+    /** The hour under way plus 6: five to show, and one to spare while a reading is up to 30 min old. */
     private const val HOURS_FETCHED = 7
-    private const val HOURS_SHOWN = 5
 
     /** Current conditions plus forecast, in one request. */
     suspend fun current(location: WeatherLocation, fahrenheit: Boolean): Weather {
@@ -108,7 +108,7 @@ object WeatherClient {
     suspend fun forecast(latitude: Double, longitude: Double, fahrenheit: Boolean): Forecast =
         parseForecast(JSONObject(get(forecastUrl(latitude, longitude, fahrenheit) + "&current=weather_code,is_day")))
 
-    // forecast_hours starts at the current hour, so fetch one extra and drop the hour already under way.
+    // forecast_hours starts at the current hour; the hour already under way is dropped.
     private fun forecastUrl(latitude: Double, longitude: Double, fahrenheit: Boolean) =
         "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&timezone=auto" +
             "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max," +
@@ -128,7 +128,6 @@ object WeatherClient {
         val hours = (0 until times.length())
             .map { i -> HourForecast(LocalDateTime.parse(times.getString(i)), temps.getDouble(i), codes.getInt(i), isDay.getInt(i) == 1) }
             .filter { it.time.isAfter(now) }
-            .take(HOURS_SHOWN)
         val daily = json.getJSONObject("daily")
         val high = daily.getJSONArray("temperature_2m_max").doubleOrNull(0)
         val rainMm = (daily.getJSONArray("rain_sum").doubleOrNull(0) ?: 0.0) +
