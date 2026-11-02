@@ -108,6 +108,15 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- Next few hours, as on the home screen, e.g. "7 PM ☁️ 5°". A little smaller than the
+             lines above, so the wide row doesn't leave the block much room to drift. -->
+        <TextView
+            android:id="@+id/hourly"
+            style="@style/DreamLine"
+            android:layout_marginTop="14dp"
+            android:textSize="18sp"
+            android:visibility="gone" />
+
         <!-- Same ids as the home screen's bar, so NowPlaying can drive it; no buttons here. -->
         <LinearLayout
             android:id="@+id/now_playing"
