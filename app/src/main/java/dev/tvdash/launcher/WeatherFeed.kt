@@ -134,11 +134,16 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
         val wind = windSpeed?.roundToInt()?.let {
             if (it == 0) string(R.string.weather_calm) else context.getString(R.string.weather_wind, it, if (prefs.fahrenheit) "mph" else "km/h")
         }
+        val degrees = temperature.roundToInt()
+        // "11° feels like 8°", or just "11°" when it feels like what it is.
+        val feels = feelsLike.roundToInt().let {
+            if (it == degrees) context.getString(R.string.weather_degrees, degrees)
+            else context.getString(R.string.weather_feels_like, degrees, it)
+        }
         return Display(
             icon = icon,
-            temperature = context.getString(R.string.weather_degrees, temperature.roundToInt()),
-            now = listOf(condition, context.getString(R.string.weather_feels_like, temperature.roundToInt(), feelsLike.roundToInt()))
-                .filter { it.isNotEmpty() }.joinToString(SEPARATOR),
+            temperature = context.getString(R.string.weather_degrees, degrees),
+            now = listOf(condition, feels).filter { it.isNotEmpty() }.joinToString(SEPARATOR),
             today = todayLine(forecast),
             place = listOfNotNull(place.ifEmpty { null }, wind, humidity?.let { context.getString(R.string.weather_humidity, it) })
                 .joinToString(SEPARATOR),
