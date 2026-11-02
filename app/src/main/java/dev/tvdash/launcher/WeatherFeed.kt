@@ -137,7 +137,7 @@ class WeatherFeed(private val context: Context, private val prefs: Prefs) {
         return Display(
             icon = icon,
             temperature = context.getString(R.string.weather_degrees, temperature.roundToInt()),
-            now = listOf(condition, context.getString(R.string.weather_feels_like, feelsLike.roundToInt()))
+            now = listOf(condition, context.getString(R.string.weather_feels_like, temperature.roundToInt(), feelsLike.roundToInt()))
                 .filter { it.isNotEmpty() }.joinToString(SEPARATOR),
             today = todayLine(forecast),
             place = listOfNotNull(place.ifEmpty { null }, wind, humidity?.let { context.getString(R.string.weather_humidity, it) })

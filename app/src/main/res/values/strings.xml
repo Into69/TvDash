@@ -96,7 +96,8 @@
     <string name="input_on">%1$s, on</string>
     <string name="settings_hidden_inputs">Hidden inputs (%1$d)</string>
     <string name="weather_high_low">High %1$d°  Low %2$d°</string>
-    <string name="weather_feels_like">Feels like %1$d°</string>
+    <!-- Measured temperature, then what it feels like: "11° feels like 8°". -->
+    <string name="weather_feels_like">%1$d° feels like %2$d°</string>
     <string name="precip_rain">Rain %1$d%%</string>
     <string name="precip_snow">Snow %1$d%%</string>
     <string name="precip_drizzle">Drizzle %1$d%%</string>
