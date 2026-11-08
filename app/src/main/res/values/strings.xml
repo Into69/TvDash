@@ -140,4 +140,10 @@
     <string name="camera_sound_off">Sound off</string>
     <string name="camera_no_audio">No audio available from this camera</string>
     <string name="camera_audio_connecting">Audio is still connecting, try again in a moment</string>
+    <string name="logs_needs_attention">%1$s, a setting needs fixing</string>
+    <string name="issues_heading">Settings to fix</string>
+    <string name="issue_dka_title">“Don\'t keep activities” is on</string>
+    <string name="issue_dka_effect">Android closes every app as soon as you leave it, so apps restart instead of picking up where they were. Some, like Prime Video, relaunch themselves and turn the TV back on after you switch it off.</string>
+    <string name="issue_dka_steps">To fix: in Developer options (the button below opens it), scroll down to the Apps section and turn off Don\'t keep activities. Leave “Enable developer options” at the top on.</string>
+    <string name="issue_open_developer_options">Open Developer options</string>
 </resources>

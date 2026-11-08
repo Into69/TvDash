@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- status_dot in amber: a tile that needs attention (the Logs tile, when a TV setting needs fixing). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/warn" />
+    <stroke android:width="2dp" android:color="@color/bg" />
+</shape>

@@ -53,7 +53,8 @@ sealed class HomeItem {
         override val key get() = keyFor(input.id, Section.INPUTS)
     }
 
-    data class Action(val id: String, val label: String, @DrawableRes val icon: Int) : HomeItem() {
+    /** [warning]: show an amber dot, e.g. on Logs when a TV setting needs fixing ([TvChecks]). */
+    data class Action(val id: String, val label: String, @DrawableRes val icon: Int, val warning: Boolean = false) : HomeItem() {
         override val key get() = "action:$id"
     }
 
@@ -301,7 +302,10 @@ class TileBoard(
         }
 
         private fun bindAction(item: HomeItem.Action) {
-            view.contentDescription = item.label
+            view.contentDescription =
+                if (item.warning) view.context.getString(R.string.logs_needs_attention, item.label) else item.label
+            statusDot.setBackgroundResource(R.drawable.status_dot_warn)
+            statusDot.visibility = if (item.warning) View.VISIBLE else View.GONE
             icon.setImageResource(item.icon)
             showIcon(item.label)
         }
@@ -310,6 +314,7 @@ class TileBoard(
             view.contentDescription =
                 if (item.input.on) view.context.getString(R.string.input_on, item.label) else item.label
             view.isActivated = item.moving
+            statusDot.setBackgroundResource(R.drawable.status_dot)
             statusDot.visibility = if (item.input.on) View.VISIBLE else View.GONE
             icon.setImageResource(R.drawable.ic_input)
             showIcon(item.label)

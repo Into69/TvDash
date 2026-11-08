@@ -534,7 +534,7 @@ class MainActivity : ComponentActivity() {
             }
             add(HomeItem.Action(ACTION_SETTINGS, getString(R.string.action_settings), R.drawable.ic_settings))
             add(HomeItem.Action(ACTION_UPDATES, getString(R.string.action_updates), R.drawable.ic_update))
-            add(HomeItem.Action(ACTION_LOGS, getString(R.string.action_logs), R.drawable.ic_logs))
+            add(HomeItem.Action(ACTION_LOGS, getString(R.string.action_logs), R.drawable.ic_logs, warning = TvChecks.issues(this@MainActivity).isNotEmpty()))
             add(HomeItem.Action(ACTION_LAUNCHER, getString(R.string.action_launcher), R.drawable.ic_tune))
         }
 

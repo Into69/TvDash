@@ -7,5 +7,7 @@
     <color name="accent">#FFFFFFFF</color>
     <color name="moving">#FF5E9CFF</color>
     <color name="on">#FF4ADE80</color>
+    <!-- Something needs attention, e.g. a TV setting on the Logs tile. -->
+    <color name="warn">#FFFBBF24</color>
     <color name="divider">#FF2A3340</color>
 </resources>

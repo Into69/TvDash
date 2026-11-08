@@ -1,13 +1,16 @@
 package dev.tvdash.launcher
 
+import android.content.ActivityNotFoundException
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.TextUtils
 import android.text.format.DateFormat
 import android.text.format.DateUtils
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +40,10 @@ class LogsActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        load()
+    }
+
+    private fun load() {
         lifecycleScope.launch {
             val log = if (SystemLogs.canRead(this@LogsActivity)) {
                 withContext(Dispatchers.IO) { runCatching { SystemLogs.load(this@LogsActivity) }.getOrNull() }
@@ -51,6 +58,7 @@ class LogsActivity : ComponentActivity() {
     private fun show(log: SystemLog?) {
         val bootedAt = log?.bootedAt ?: SystemLogs.bootedAt()
         title(getString(R.string.logs_title))
+        showIssues()
 
         heading(getString(R.string.logs_last_restart))
         line("${time(bootedAt)}  ·  " + getString(R.string.logs_up_for, duration(System.currentTimeMillis() - bootedAt)))
@@ -113,6 +121,35 @@ class LogsActivity : ComponentActivity() {
         return when {
             days > 0 -> getString(R.string.logs_duration_days, days, hours)
             else -> getString(R.string.logs_duration_hours, hours, minutes % 60)
+        }
+    }
+
+    /**
+     * TV settings to fix ([TvChecks]) lead the page: what's wrong, what it causes, the steps, and a
+     * button to the screen where it's fixed. The Logs tile shows an amber dot while any are listed;
+     * coming back here afterwards re-checks (onResume), so a fixed one disappears.
+     */
+    private fun showIssues() {
+        val issues = TvChecks.issues(this)
+        if (issues.isEmpty()) return
+        heading(getString(R.string.issues_heading))
+        issues.forEachIndexed { i, issue ->
+            line(getString(issue.title), bold = true)
+            line(getString(issue.effect))
+            line(getString(issue.steps), dim = true)
+            val button = Button(this).apply {
+                text = getString(issue.fixLabel)
+                setOnClickListener {
+                    try {
+                        startActivity(issue.fixScreen)
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(this@LogsActivity, getString(R.string.cannot_open, text), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            rows.addView(button, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            // The page took focus before this existed; put it on the first fix so OK presses it.
+            if (i == 0) button.post { button.requestFocus() }
         }
     }
 
