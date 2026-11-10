@@ -12,6 +12,7 @@
     .\tools\tv.ps1 wunderground 192.168.1.50 -Off                                 # back to Open-Meteo
     .\tools\tv.ps1 export 192.168.1.50                 # save this TV's layout to layouts\layout.json (master copy)
     .\tools\tv.ps1 import 192.168.1.51                 # apply it on another TV; it offers to install missing apps
+    .\tools\tv.ps1 privacy 10.31.0.69:42329            # Sony TV asks to agree to a privacy statement at every start-up
 
 .NOTES
     On each TV first enable: Settings > System > About > tap "Build" 7 times, then
@@ -20,7 +21,7 @@
 #>
 param(
     [Parameter(Mandatory, Position = 0)]
-    [ValidateSet('install', 'debloat', 'restore', 'packages', 'wunderground', 'export', 'import')]
+    [ValidateSet('install', 'debloat', 'restore', 'packages', 'wunderground', 'export', 'import', 'privacy')]
     [string]$Command,
 
     [Parameter(Mandatory, Position = 1, ValueFromRemainingArguments)]
@@ -250,6 +251,26 @@ foreach ($address in $Tv) {
                 if ($missing.Count) {
                     Write-Host "  $($missing.Count) app(s) not installed here - the TV is asking whether to install or skip each:"
                     $missing | ForEach-Object { Write-Host "    $($layout.labels.$_ ?? $_)  ($_)" }
+                }
+            }
+            'privacy' {
+                # After a firmware update adds a privacy statement, Sony's set-up wizard
+                # (com.mediatek.tv.oneworld.wizardkt) asks for it on every start-up, but crashes on OK
+                # because it reads the country from setupwraith, which debloat turns off. So the
+                # agreement never saves. setupwraith goes back on just long enough to agree.
+                $wraith = 'com.google.android.tungsten.setupwraith'
+                if (-not (Test-Installed $serial $wraith)) { throw "$wraith isn't on this TV; this fix doesn't apply." }
+                Invoke-Adb $serial @('shell', 'pm', 'enable', $wraith) | Out-Null
+                # Enabling it also makes it the Home screen; keep TvDash.
+                Invoke-Adb $serial @('shell', 'cmd', 'package', 'set-home-activity', "$Launcher/.MainActivity") | Out-Null
+                try {
+                    Write-Host "  Google set-up is on for now. On the TV: turn it off and on with the remote, press OK on the"
+                    Write-Host "  privacy notice and go through the privacy screens. Avoid the Home button until this finishes."
+                    Read-Host '  Press Enter here when done' | Out-Null
+                } finally {
+                    Invoke-Adb $serial @('shell', 'pm', 'disable-user', '--user', '0', $wraith) | Out-Null
+                    Invoke-Adb $serial @('shell', 'cmd', 'package', 'set-home-activity', "$Launcher/.MainActivity") | Out-Null
+                    Write-Host "  Google set-up is off again and TvDash is the Home screen. Turn the TV off and on to check the notice is gone."
                 }
             }
             'packages' {
