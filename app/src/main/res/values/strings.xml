@@ -146,4 +146,12 @@
     <string name="issue_dka_effect">Android closes every app as soon as you leave it, so apps restart instead of picking up where they were. Some, like Prime Video, relaunch themselves and turn the TV back on after you switch it off.</string>
     <string name="issue_dka_steps">To fix: in Developer options (the button below opens it), scroll down to the Apps section and turn off Don\'t keep activities. Leave “Enable developer options” at the top on.</string>
     <string name="issue_open_developer_options">Open Developer options</string>
+    <string name="issue_bloat_title">Stock apps were turned back on</string>
+    <string name="issue_bloat_effect">Usually a system update does this. Back on: %1$s. These can bring back ads, take over the home screen or screensaver, or show prompts at startup.</string>
+    <string name="issue_bloat_steps">To fix: on the PC, run .\\tools\\tv.ps1 debloat &lt;TV address&gt;. TvDash can\'t turn them off itself; only the PC can.</string>
+    <string name="issue_bloat_steps_wireless">To fix: press the button below to turn on Wireless debugging (on Wi-Fi), then on the PC run .\\tools\\tv.ps1 debloat with the address and port shown under Wireless debugging, e.g. 10.31.0.69:41234. TvDash can\'t turn them off itself; only the PC can.</string>
+    <string name="issue_turn_on_wireless_debugging">Turn on Wireless debugging</string>
+    <string name="wireless_debugging_on">Wireless debugging is on. If the TV asks, allow it on this network.</string>
+    <string name="wireless_debugging_no_wifi">Wireless debugging needs Wi-Fi, and this TV isn\'t on Wi-Fi. Unplug the network cable and try again.</string>
+    <string name="wireless_debugging_failed">Couldn\'t turn on Wireless debugging. Turn it on in Developer options.</string>
 </resources>

@@ -36,6 +36,16 @@
         <intent>
             <action android:name="com.google.android.finsky.VIEW_MY_DOWNLOADS" />
         </intent>
+        <!-- The Logs tile flags these when they're on again after debloat (TvChecks.BLOAT). -->
+        <package android:name="com.google.android.apps.tv.launcherx" />
+        <package android:name="com.google.android.tungsten.setupwraith" />
+        <package android:name="com.google.android.tvlauncher" />
+        <package android:name="com.google.android.leanbacklauncher" />
+        <package android:name="com.google.android.tvrecommendations" />
+        <package android:name="com.google.android.leanbacklauncher.recommendations" />
+        <package android:name="com.sony.dtv.promos" />
+        <package android:name="com.google.android.apps.tv.dreamx" />
+        <package android:name="com.google.android.backdrop" />
     </queries>
 
     <application

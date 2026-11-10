@@ -49,6 +49,7 @@ $Apk = Join-Path $PSScriptRoot '..\app\build\outputs\apk\debug\app-debug.apk'
 
 # Stock home screens and the services that feed them ads/"recommendations".
 # Everything here is disabled for user 0 only (no root) and comes back with 'restore' or a factory reset.
+# TvDash's Logs tile flags any of these that come back on: keep TvChecks.BLOAT and the manifest's <queries> in step.
 $Bloat = @(
     'com.google.android.apps.tv.launcherx'          # Google TV home screen (the ads)
     'com.google.android.tungsten.setupwraith'       # Google TV setup shell; re-asserts launcherx as home

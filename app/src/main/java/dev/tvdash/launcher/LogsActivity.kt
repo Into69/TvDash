@@ -134,17 +134,20 @@ class LogsActivity : ComponentActivity() {
         if (issues.isEmpty()) return
         heading(getString(R.string.issues_heading))
         issues.forEachIndexed { i, issue ->
-            line(getString(issue.title), bold = true)
-            line(getString(issue.effect))
-            line(getString(issue.steps), dim = true)
+            line(issue.title, bold = true)
+            line(issue.effect)
+            line(issue.steps, dim = true)
             val button = Button(this).apply {
-                text = getString(issue.fixLabel)
+                text = issue.fixLabel
                 setOnClickListener {
-                    try {
-                        startActivity(issue.fixScreen)
-                    } catch (e: ActivityNotFoundException) {
-                        Toast.makeText(this@LogsActivity, getString(R.string.cannot_open, text), Toast.LENGTH_LONG).show()
+                    val open = {
+                        try {
+                            startActivity(issue.fixScreen)
+                        } catch (e: ActivityNotFoundException) {
+                            Toast.makeText(this@LogsActivity, getString(R.string.cannot_open, text), Toast.LENGTH_LONG).show()
+                        }
                     }
+                    issue.beforeFix?.invoke(this@LogsActivity, open) ?: open()
                 }
             }
             rows.addView(button, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
