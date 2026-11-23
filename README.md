@@ -94,9 +94,11 @@ data:
     fontsize: large             # small, medium, large, max
     transparency: 25%           # 0% (default), 25%, 50%, 75%, 100%
     image:
-      url: http://homeassistant.local:8123/api/camera_proxy/camera.front_door
-      # Home Assistant fetches the image and sends it to the TV; add username/password/auth if needed
+      path: /config/www/tv/front_door.jpg   # or url: (plus username/password/auth if it needs a login)
 ```
+
+For a camera picture, save a snapshot first (`camera.snapshot` with `filename: /config/www/tv/front_door.jpg`),
+then send it as above. A `camera_proxy` URL doesn't work: it needs a token that the integration can't send.
 
 A plain JSON POST works too, e.g. from a `rest_command`:
 
