@@ -60,6 +60,14 @@ class LogsActivity : ComponentActivity() {
         title(getString(R.string.logs_title))
         showIssues()
 
+        heading(getString(R.string.logs_network))
+        val address = TvNetwork.current(this)
+        if (address == null) {
+            line(getString(R.string.logs_offline), dim = true)
+        } else {
+            line(getString(if (address.ethernet) R.string.logs_address_ethernet else R.string.logs_address_wifi, address.ip))
+        }
+
         heading(getString(R.string.logs_last_restart))
         line("${time(bootedAt)}  ·  " + getString(R.string.logs_up_for, duration(System.currentTimeMillis() - bootedAt)))
         if (log == null) {

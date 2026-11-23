@@ -67,6 +67,10 @@
     <string name="logs_reported_reason">Reason the TV reported: %1$s</string>
     <string name="logs_reason_unknown">Reason not recorded</string>
     <string name="logs_history">Restart history</string>
+    <string name="logs_network">Network</string>
+    <string name="logs_address_wifi">%1$s  ·  Wi-Fi</string>
+    <string name="logs_address_ethernet">%1$s  ·  Ethernet</string>
+    <string name="logs_offline">Not connected</string>
     <string name="logs_crashes">Recent crashes and freezes</string>
     <string name="logs_none">None recorded</string>
     <string name="logs_more">…and %1$d older</string>

@@ -812,7 +812,7 @@ class MainActivity : ComponentActivity() {
         val message = if (!enabled) {
             getString(R.string.ha_off_message)
         } else {
-            val address = HaNotificationServer.localAddress() ?: getString(R.string.ha_no_address)
+            val address = TvNetwork.current(this)?.ip ?: getString(R.string.ha_no_address)
             getString(R.string.ha_on_message, address, HaNotificationServer.PORT) + "\n\n" +
                 getString(if (Settings.canDrawOverlays(this)) R.string.ha_overlay_ok else R.string.ha_overlay_missing)
         }

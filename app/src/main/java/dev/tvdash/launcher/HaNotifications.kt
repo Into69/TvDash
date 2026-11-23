@@ -23,11 +23,9 @@ import java.io.DataInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
@@ -428,14 +426,5 @@ class HaNotificationServer(private val context: Context) {
             "grey" to DEFAULT_GREY, "black" to "#000000", "indigo" to "#303F9F", "green" to "#4CAF50",
             "red" to "#F44336", "cyan" to "#00BCD4", "teal" to "#009688", "amber" to "#FFC107", "pink" to "#E91E63",
         )
-
-        /** This TV's home-network IPv4 address, for the settings screen; null if it has none. */
-        fun localAddress(): String? = runCatching {
-            NetworkInterface.getNetworkInterfaces().toList()
-                .filter { it.isUp && !it.isLoopback }
-                .flatMap { it.inetAddresses.toList() }
-                .firstOrNull { it is Inet4Address && it.isSiteLocalAddress }
-                ?.hostAddress
-        }.getOrNull()
     }
 }
