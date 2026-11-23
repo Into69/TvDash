@@ -5,11 +5,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-/** Loads this TV's UniFi settings before any screen (home, screensaver, camera) needs them. */
+/**
+ * Loads this TV's UniFi settings before any screen (home, screensaver, camera) needs them, and
+ * starts listening for Home Assistant notifications.
+ */
 class TvDashApp : Application() {
     override fun onCreate() {
         super.onCreate()
         ProtectClient.config = Prefs(this).unifi
+        NotificationCards.init(this)
+        HaNotificationService.start(this)
     }
 }
 
@@ -28,6 +33,7 @@ class DeviceConfigReceiver : BroadcastReceiver() {
             unifiHost = intent.getStringExtra(EXTRA_UNIFI_HOST)?.trim(),
             unifiKey = intent.getStringExtra(EXTRA_UNIFI_KEY)?.trim(),
             unifiCert = intent.getStringExtra(EXTRA_UNIFI_CERT)?.trim(),
+            haAllowFrom = intent.getStringExtra(EXTRA_HA_ALLOW_FROM)?.trim(),
         )
         ProtectClient.config = prefs.unifi
         resultData = "ok"
@@ -39,5 +45,6 @@ class DeviceConfigReceiver : BroadcastReceiver() {
         private const val EXTRA_UNIFI_HOST = "unifi_host"
         private const val EXTRA_UNIFI_KEY = "unifi_key"
         private const val EXTRA_UNIFI_CERT = "unifi_cert_sha256"
+        private const val EXTRA_HA_ALLOW_FROM = "ha_allow_from"
     }
 }

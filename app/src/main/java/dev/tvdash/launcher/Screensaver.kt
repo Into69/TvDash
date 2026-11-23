@@ -52,6 +52,9 @@ class Screensaver(private val context: Context, private val root: View) {
 
     fun start() {
         val prefs = Prefs(context)
+        // Home Assistant notifications show here rather than in an overlay, which the system
+        // screensaver may cover.
+        (root.findViewById<View>(android.R.id.content) as? FrameLayout)?.let { NotificationCards.attach(it, aboveOverlay = true) }
         placed = false
         content.alpha = 0f
         // If it's already laid out (restarting), the layout listener won't fire: place it now.
@@ -88,6 +91,7 @@ class Screensaver(private val context: Context, private val root: View) {
     }
 
     fun stop() {
+        (root.findViewById<View>(android.R.id.content) as? FrameLayout)?.let(NotificationCards::detach)
         cameraFeed?.stop()
         cameraFeed = null
         scope?.cancel()

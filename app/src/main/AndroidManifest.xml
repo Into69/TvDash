@@ -15,6 +15,12 @@
     <!-- Self-update from GitHub releases (Updates tile); tools/tv.ps1 install allows it. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Home Assistant notifications: a foreground service keeps the receiver running behind other
+         apps, and the overlay shows them on top (granted by tools/tv.ps1 grant). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.software.live_tv" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -92,6 +98,16 @@
                 <action android:name="android.service.dreams.DreamService" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </service>
+
+        <!-- Receives Home Assistant notifications on port 7676 (HaNotificationServer). -->
+        <service
+            android:name=".HaNotificationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Receives notifications from Home Assistant on the local network and shows them on the TV" />
         </service>
 
         <!-- tools/tv.ps1 export: writes the layout to app storage for the script to read back. -->

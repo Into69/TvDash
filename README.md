@@ -21,7 +21,12 @@ wu.apiKey=...
 unifi.host=192.168.1.1
 unifi.apiKey=...
 unifi.certSha256=AB:CD:...
+# Only accept Home Assistant notifications from these addresses (comma-separated);
+# without it, anything on the home network can send them
+ha.allowFrom=192.168.1.10
 ```
+
+To send these settings to a TV that updates itself, without reinstalling, run `.\tools\tv.ps1 grant <ip>`.
 
 ## Updates
 
@@ -67,4 +72,40 @@ A system update can turn the stock launcher back on. If ads come back, run `debl
 - **Updates** tile: update TvDash, the TV's software, or apps from the Play Store.
 - **Logs** tile: why the TV last restarted (including kernel crashes and freezes) and recent app crashes.
 - Press **Up** from the top row to reach the weather and change the city.
+- **Home Assistant notifications**: see below. Turn them off, or send a test, from the **Home screen** tile.
 - Weather comes from [Open-Meteo](https://open-meteo.com): no account, no API key.
+
+## Home Assistant notifications
+
+TvDash listens on port 7676, the port Home Assistant's
+[Notifications for Android TV / Fire TV](https://www.home-assistant.io/integrations/nfandroidtv/) integration uses.
+In Home Assistant, go to **Settings > Devices & services > Add integration**, pick that integration, and enter
+the TV's address. The **Home screen** tile shows the address. Then send to the TV with its notify action:
+
+```yaml
+action: notify.living_room_tv
+data:
+  title: Front door
+  message: Someone is at the front door
+  data:
+    duration: 15                # seconds (default 5)
+    position: top-right         # bottom-right (default), bottom-left, top-left, center
+    color: red                  # a colour strip: red, green, amber, indigo, cyan, teal, pink, black
+    fontsize: large             # small, medium, large, max
+    transparency: 25%           # 0% (default), 25%, 50%, 75%, 100%
+    image:
+      url: http://homeassistant.local:8123/api/camera_proxy/camera.front_door
+      # Home Assistant fetches the image and sends it to the TV; add username/password/auth if needed
+```
+
+A plain JSON POST works too, e.g. from a `rest_command`:
+
+```powershell
+curl -H "Content-Type: application/json" -d '{"title":"Washer","message":"The laundry is done.","duration":10}' http://192.168.1.50:7676/
+```
+
+Notifications show over whatever app is open (not over the TV's Settings, which hides all overlays) and
+in the TvDash screensaver. Showing over other apps needs a permission only adb can give: run
+`.\tools\tv.ps1 grant <ip>` once per TV. Without it, notifications only show while the TvDash home screen
+or screensaver is on screen. The integration can't send a password, so TvDash only accepts
+notifications from the home network, or only from `ha.allowFrom` if you set it.

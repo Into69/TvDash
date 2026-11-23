@@ -154,4 +154,20 @@
     <string name="wireless_debugging_on">Wireless debugging is on. If the TV asks, allow it on this network.</string>
     <string name="wireless_debugging_no_wifi">Wireless debugging needs Wi-Fi, and this TV isn\'t on Wi-Fi. Unplug the network cable and try again.</string>
     <string name="wireless_debugging_failed">Couldn\'t turn on Wireless debugging. Turn it on in Developer options.</string>
+    <string name="settings_ha">Home Assistant notifications: %1$s</string>
+    <string name="ha_on">on</string>
+    <string name="ha_off">off</string>
+    <string name="ha_title">Home Assistant notifications</string>
+    <string name="ha_on_message">TvDash is listening at %1$s, port %2$d.\n\nIn Home Assistant, add the “Notifications for Android TV / Fire TV” integration with that address, then send to it with a notify action.</string>
+    <string name="ha_no_address">this TV\'s address (not on a network now)</string>
+    <string name="ha_overlay_ok">Notifications appear over any app.</string>
+    <string name="ha_overlay_missing">For now they only appear while TvDash is on screen. To show them over other apps too, on the PC run: .\\tools\\tv.ps1 grant &lt;TV address&gt;</string>
+    <string name="ha_off_message">TvDash isn\'t listening for Home Assistant notifications.</string>
+    <string name="ha_turn_off">Turn off</string>
+    <string name="ha_turn_on">Turn on</string>
+    <string name="ha_test">Send a test</string>
+    <string name="ha_test_title">Home Assistant</string>
+    <string name="ha_test_message">Notifications from Home Assistant will look like this.</string>
+    <string name="ha_channel">Home Assistant receiver</string>
+    <string name="ha_listening">Listening for Home Assistant on port %1$d</string>
 </resources>

@@ -87,16 +87,30 @@ class Prefs(context: Context) {
             return if (host.isEmpty() || key.isEmpty() || cert.isEmpty()) null else UnifiConfig(host, key, cert)
         }
 
+    /**
+     * Addresses allowed to send Home Assistant notifications (ha.allowFrom, comma-separated).
+     * Empty means anyone on the home network.
+     */
+    val haAllowFrom: List<String>
+        get() = sp.getString(KEY_HA_ALLOW_FROM, "")!!.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+
     /** Stores what tv.ps1 sent; null leaves a value as it is, "" clears it. */
     fun setDeviceConfig(
         wuStation: String?, wuKey: String?, unifiHost: String?, unifiKey: String?, unifiCert: String?,
+        haAllowFrom: String?,
     ) = sp.edit {
         wuStation?.let { putString(KEY_WU_DEFAULT_STATION, it) }
         wuKey?.let { putString(KEY_WU_DEFAULT_KEY, it) }
         unifiHost?.let { putString(KEY_UNIFI_HOST, it) }
         unifiKey?.let { putString(KEY_UNIFI_KEY, it) }
         unifiCert?.let { putString(KEY_UNIFI_CERT, it) }
+        haAllowFrom?.let { putString(KEY_HA_ALLOW_FROM, it) }
     }
+
+    /** Whether TvDash listens for Home Assistant notifications ([HaNotificationServer]). */
+    var haEnabled: Boolean
+        get() = sp.getBoolean("ha_enabled", true)
+        set(value) = sp.edit { putBoolean("ha_enabled", value) }
 
     /** Time zone of the weather location, shown by the clock. Null until weather first loads. */
     var clockTimeZone: String?
@@ -196,9 +210,11 @@ class Prefs(context: Context) {
         private const val KEY_UNIFI_HOST = "unifi_host"
         private const val KEY_UNIFI_KEY = "unifi_key"
         private const val KEY_UNIFI_CERT = "unifi_cert_sha256"
+        private const val KEY_HA_ALLOW_FROM = "ha_allow_from"
         private val LOCAL_KEYS = setOf(
             KEY_IMPORT_WANTED, KEY_IMPORT_LABELS,
             KEY_WU_DEFAULT_STATION, KEY_WU_DEFAULT_KEY, KEY_UNIFI_HOST, KEY_UNIFI_KEY, KEY_UNIFI_CERT,
+            KEY_HA_ALLOW_FROM,
         )
 
         val DEFAULT_LOCATION = WeatherLocation("Arnprior, Ontario, Canada", 45.43341, -76.34939)

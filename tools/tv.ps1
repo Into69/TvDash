@@ -12,7 +12,8 @@
     .\tools\tv.ps1 wunderground 192.168.1.50 -Off                                 # back to Open-Meteo
     .\tools\tv.ps1 export 192.168.1.50                 # save this TV's layout to layouts\layout.json (master copy)
     .\tools\tv.ps1 import 192.168.1.51                 # apply it on another TV; it offers to install missing apps
-    .\tools\tv.ps1 privacy 10.31.0.69:42329            # Sony TV asks to agree to a privacy statement at every start-up
+    .\tools\tv.ps1 grant 192.168.1.50                  # re-send settings and permissions, without installing
+    .\tools\tv.ps1 privacy 10.31.0.69:42329           # Sony TV asks to agree to a privacy statement at every start-up
 
 .NOTES
     On each TV first enable: Settings > System > About > tap "Build" 7 times, then
@@ -21,7 +22,7 @@
 #>
 param(
     [Parameter(Mandatory, Position = 0)]
-    [ValidateSet('install', 'debloat', 'restore', 'packages', 'wunderground', 'export', 'import', 'privacy')]
+    [ValidateSet('install', 'debloat', 'restore', 'packages', 'wunderground', 'export', 'import', 'privacy', 'grant')]
     [string]$Command,
 
     [Parameter(Mandatory, Position = 1, ValueFromRemainingArguments)]
@@ -71,6 +72,7 @@ $DeviceConfig = [ordered]@{
     'unifi.host'       = 'unifi_host'
     'unifi.apiKey'     = 'unifi_key'
     'unifi.certSha256' = 'unifi_cert_sha256'
+    'ha.allowFrom'     = 'ha_allow_from'
 }
 
 function Read-LocalProperties {
@@ -126,6 +128,35 @@ function Set-PackageState([string]$Serial, [string]$Package, [string[]]$PmArgs, 
     }
 }
 
+# Settings and permissions TvDash needs beyond the APK. Run by 'install'; 'grant' runs it alone
+# for TVs that update themselves from GitHub.
+function Grant-TvDash([string]$Serial) {
+    # Keys and addresses from local.properties (the APK has none; it's published).
+    $props = Read-LocalProperties
+    $extras = foreach ($name in $DeviceConfig.Keys) {
+        if ($props[$name]) { '--es', $DeviceConfig[$name], "'$($props[$name] -replace "'", '')'" }
+    }
+    if ($extras) {
+        Invoke-Adb $Serial (@('shell', 'am', 'broadcast', '-n', "$Launcher/.DeviceConfigReceiver") + $extras) | Out-Null
+    }
+    # Self-update from GitHub releases (Updates tile).
+    Invoke-Adb $Serial @('shell', 'appops', 'set', $Launcher, 'REQUEST_INSTALL_PACKAGES', 'allow') | Out-Null
+    Invoke-Adb $Serial @('shell', 'cmd', 'package', 'set-home-activity', "$Launcher/.MainActivity") | Out-Null
+    # The Logs tile reads the system DropBox (restart reasons, crashes); only adb can allow that.
+    Invoke-Adb $Serial @('shell', 'pm', 'grant', $Launcher, 'android.permission.READ_LOGS') | Out-Null
+    Invoke-Adb $Serial @('shell', 'appops', 'set', $Launcher, 'GET_USAGE_STATS', 'allow') | Out-Null
+    # Now playing: reading other apps' media sessions needs an enabled notification listener.
+    Invoke-Adb $Serial @('shell', 'cmd', 'notification', 'allow_listener', "$Launcher/$Launcher.MediaListener") | Out-Null
+    # Screensaver: TvDash's, in place of Google TV's Ambient mode.
+    Invoke-Adb $Serial @('shell', 'settings', 'put', 'secure', 'screensaver_components', "$Launcher/.TvDashDream") | Out-Null
+    Invoke-Adb $Serial @('shell', 'settings', 'put', 'secure', 'screensaver_enabled', '1') | Out-Null
+    # Lets the Home screen settings change when the screensaver starts, or turn it off.
+    Invoke-Adb $Serial @('shell', 'pm', 'grant', $Launcher, 'android.permission.WRITE_SECURE_SETTINGS') | Out-Null
+    Invoke-Adb $Serial @('shell', 'appops', 'set', $Launcher, 'WRITE_SETTINGS', 'allow') | Out-Null
+    # Home Assistant notifications: shown over whatever app is open.
+    Invoke-Adb $Serial @('shell', 'appops', 'set', $Launcher, 'SYSTEM_ALERT_WINDOW', 'allow') | Out-Null
+}
+
 foreach ($address in $Tv) {
     try {
         $serial = Connect-Tv $address
@@ -137,29 +168,15 @@ foreach ($address in $Tv) {
                 if (-not (Test-Path $Apk)) { throw "APK not found at $Apk - run .\gradlew.bat assembleDebug first." }
                 # -d: a local build can have a lower build number than a release the TV updated to.
                 Invoke-Adb $serial @('install', '-r', '-d', $Apk) | Out-Null
-                # Keys and addresses from local.properties (the APK has none; it's published).
-                $props = Read-LocalProperties
-                $extras = foreach ($name in $DeviceConfig.Keys) {
-                    if ($props[$name]) { '--es', $DeviceConfig[$name], "'$($props[$name] -replace "'", '')'" }
-                }
-                if ($extras) {
-                    Invoke-Adb $serial (@('shell', 'am', 'broadcast', '-n', "$Launcher/.DeviceConfigReceiver") + $extras) | Out-Null
-                }
-                # Self-update from GitHub releases (Updates tile).
-                Invoke-Adb $serial @('shell', 'appops', 'set', $Launcher, 'REQUEST_INSTALL_PACKAGES', 'allow') | Out-Null
-                Invoke-Adb $serial @('shell', 'cmd', 'package', 'set-home-activity', "$Launcher/.MainActivity") | Out-Null
-                # The Logs tile reads the system DropBox (restart reasons, crashes); only adb can allow that.
-                Invoke-Adb $serial @('shell', 'pm', 'grant', $Launcher, 'android.permission.READ_LOGS') | Out-Null
-                Invoke-Adb $serial @('shell', 'appops', 'set', $Launcher, 'GET_USAGE_STATS', 'allow') | Out-Null
-                # Now playing: reading other apps' media sessions needs an enabled notification listener.
-                Invoke-Adb $serial @('shell', 'cmd', 'notification', 'allow_listener', "$Launcher/$Launcher.MediaListener") | Out-Null
-                # Screensaver: TvDash's, in place of Google TV's Ambient mode.
-                Invoke-Adb $serial @('shell', 'settings', 'put', 'secure', 'screensaver_components', "$Launcher/.TvDashDream") | Out-Null
-                Invoke-Adb $serial @('shell', 'settings', 'put', 'secure', 'screensaver_enabled', '1') | Out-Null
-                # Lets the Home screen settings change when the screensaver starts, or turn it off.
-                Invoke-Adb $serial @('shell', 'pm', 'grant', $Launcher, 'android.permission.WRITE_SECURE_SETTINGS') | Out-Null
-                Invoke-Adb $serial @('shell', 'appops', 'set', $Launcher, 'WRITE_SETTINGS', 'allow') | Out-Null
+                Grant-TvDash $serial
                 Write-Host "  installed and set as home. Run 'debloat' to remove the stock home screen."
+            }
+            'grant' {
+                if (-not (Test-Installed $serial $Launcher)) { throw "TvDash is not installed here - run 'install' first." }
+                Grant-TvDash $serial
+                # Opens the home screen, which starts the Home Assistant receiver with its new permission.
+                Invoke-Adb $serial @('shell', 'am', 'start', '-n', "$Launcher/.MainActivity") | Out-Null
+                Write-Host "  settings and permissions sent."
             }
             'debloat' {
                 # Never leave a TV without a home screen.

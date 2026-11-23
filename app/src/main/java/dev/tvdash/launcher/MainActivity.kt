@@ -22,6 +22,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextClock
@@ -267,6 +268,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Restarts the receiver if Android stopped it; cards show here when they can't go over other apps.
+        HaNotificationService.start(this)
+        NotificationCards.attach(findViewById(android.R.id.content), aboveOverlay = false)
         onEthernet = isOnEthernet()
         connectivity.registerDefaultNetworkCallback(networkCallback)
         tvInputs?.registerCallback(inputCallback, Handler(Looper.getMainLooper()))
@@ -290,6 +294,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        NotificationCards.detach(findViewById<FrameLayout>(android.R.id.content))
         weatherJob?.cancel()
         snapshotJob?.cancel()
         connectivity.unregisterNetworkCallback(networkCallback)
@@ -789,12 +794,43 @@ class MainActivity : ComponentActivity() {
             val chosen = cameras.firstOrNull { it.id == prefs.screensaverCamera }?.name ?: getString(R.string.screensaver_no_camera)
             entries.add(4, getString(R.string.settings_screensaver_camera, chosen) to ::pickScreensaverCamera)
         }
+        entries += getString(
+            R.string.settings_ha,
+            getString(if (prefs.haEnabled) R.string.ha_on else R.string.ha_off),
+        ) to ::homeAssistantDialog
         val pending = pendingInstalls()
         if (pending.isNotEmpty()) entries.add(0, getString(R.string.settings_finish_setup, pending.size) to ::showSetup)
         DialogBuilder()
             .setTitle(R.string.action_launcher)
             .setItems(entries.map { it.first }.toTypedArray()) { _, which -> entries[which].second() }
             .show()
+    }
+
+    /** Where Home Assistant should send notifications, whether they can show over other apps, and a test. */
+    private fun homeAssistantDialog() {
+        val enabled = prefs.haEnabled
+        val message = if (!enabled) {
+            getString(R.string.ha_off_message)
+        } else {
+            val address = HaNotificationServer.localAddress() ?: getString(R.string.ha_no_address)
+            getString(R.string.ha_on_message, address, HaNotificationServer.PORT) + "\n\n" +
+                getString(if (Settings.canDrawOverlays(this)) R.string.ha_overlay_ok else R.string.ha_overlay_missing)
+        }
+        val builder = DialogBuilder()
+            .setTitle(R.string.ha_title)
+            .setMessage(message)
+            .setNeutralButton(if (enabled) R.string.ha_turn_off else R.string.ha_turn_on) { _, _ ->
+                prefs.haEnabled = !enabled
+                if (enabled) HaNotificationService.stop(this) else HaNotificationService.start(this)
+            }
+        if (enabled) {
+            builder.setPositiveButton(R.string.ha_test) { _, _ ->
+                NotificationCards.post(
+                    HaNotification(getString(R.string.ha_test_title), getString(R.string.ha_test_message), durationMs = 8_000),
+                )
+            }
+        }
+        builder.show()
     }
 
     private fun wundergroundDialog() {
