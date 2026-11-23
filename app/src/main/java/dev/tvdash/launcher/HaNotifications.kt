@@ -126,7 +126,8 @@ class HaNotificationService : Service() {
 /**
  * A small HTTP server on port [PORT] for Home Assistant's "Notifications for Android TV / Fire
  * TV" integration (`nfandroidtv`). It sends a multipart POST to `/` with the fields msg, title,
- * duration, position, fontsize, transparency, color and interrupt, plus file parts filename (the
+ * duration, position, fontsize, transparency, bkgcolor (color in newer versions of its library)
+ * and interrupt, plus file parts filename (the
  * icon) and filename2 (an image). Its setup check is a plain GET.
  *
  * A JSON POST also works, for `rest_command` or curl:
@@ -314,9 +315,17 @@ class HaNotificationServer(private val context: Context) {
      * a transparency like "25%".
      */
     private fun fromFields(field: (String) -> String?, icon: ByteArray?, image: ByteArray?): HaNotification? {
-        val title = field("title")?.trim().orEmpty()
-        val message = field("msg")?.trim().orEmpty()
+        val title = field("title")?.let(::plainText).orEmpty()
+        val message = field("msg")?.let(::plainText).orEmpty()
         if (title.isEmpty() && message.isEmpty() && image == null) return null
+        val picture = image?.let { decode(it, IMAGE_PX) }
+        Log.i(TAG, "Notification \"$title\": " + when {
+            image == null -> "no image"
+            picture != null -> "image ${picture.width}×${picture.height} (${image.size} bytes)"
+            // Home Assistant sends whatever its image URL returned, even an error page.
+            else -> "image of ${image.size} bytes isn't a picture, starts: " +
+                String(image, 0, minOf(image.size, 120), Charsets.UTF_8).replace(Regex("\\s+"), " ")
+        })
         val duration = (field("duration")?.toDoubleOrNull() ?: HaNotification.DEFAULT_DURATION_S.toDouble())
             .coerceIn(1.0, MAX_DURATION_S)
         val position = field("position")?.let { POSITIONS[it.lowercase()] ?: it.toIntOrNull() }
@@ -328,14 +337,19 @@ class HaNotificationServer(private val context: Context) {
             message = message,
             durationMs = (duration * 1000).toLong(),
             position = position,
-            color = field("color")?.let(::parseColor),
+            // Home Assistant's library (0.1.x) sends "bkgcolor"; newer versions send "color".
+            color = (field("bkgcolor") ?: field("color"))?.let(::parseColor),
             // 1 = 0% transparent … 5 = 100%; keep a little backing so the text stays readable.
             backgroundAlpha = (1f - (transparency - 1) * 0.25f).coerceAtLeast(0.15f),
             textScale = TEXT_SCALES[fontSize] ?: 1f,
             icon = icon?.let { decode(it, ICON_PX) }?.takeIf { it.width > 4 && it.height > 4 },
-            image = image?.let { decode(it, IMAGE_PX) },
+            image = picture,
         )
     }
+
+    /** Home Assistant turns line breaks into `<br>` (the original receiver app shows HTML). */
+    private fun plainText(value: String): String =
+        value.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n").trim()
 
     /** "#F44336" or a name the integration knows; null for its default grey, which gets no accent. */
     private fun parseColor(value: String): Int? {
