@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
+import android.text.Html
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -317,15 +318,18 @@ class HaNotificationServer(private val context: Context) {
     private fun fromFields(field: (String) -> String?, icon: ByteArray?, image: ByteArray?): HaNotification? {
         val title = field("title")?.let(::plainText).orEmpty()
         val message = field("msg")?.let(::plainText).orEmpty()
-        if (title.isEmpty() && message.isEmpty() && image == null) return null
         val picture = image?.let { decode(it, IMAGE_PX) }
-        Log.i(TAG, "Notification \"$title\": " + when {
+        Log.i(TAG, "Notification \"${title.replace('\n', ' ').take(LOGGED_TITLE_CHARS)}\": " + when {
             image == null -> "no image"
             picture != null -> "image ${picture.width}×${picture.height} (${image.size} bytes)"
-            // Home Assistant sends whatever its image URL returned, even an error page.
+            // Home Assistant sends whatever its image URL returned, even an error page. Readable
+            // characters only, so a picture in a format Android can't read doesn't garble the log.
             else -> "image of ${image.size} bytes isn't a picture, starts: " +
-                String(image, 0, minOf(image.size, 120), Charsets.UTF_8).replace(Regex("\\s+"), " ")
+                image.take(LOGGED_IMAGE_BYTES).map { b -> b.toInt().toChar().takeIf { it in ' '..'~' } ?: '.' }
+                    .joinToString("")
         })
+        // An image that isn't a picture leaves nothing to show.
+        if (title.isEmpty() && message.isEmpty() && picture == null) return null
         val duration = (field("duration")?.toDoubleOrNull() ?: HaNotification.DEFAULT_DURATION_S.toDouble())
             .coerceIn(1.0, MAX_DURATION_S)
         val position = field("position")?.let { POSITIONS[it.lowercase()] ?: it.toIntOrNull() }
@@ -338,7 +342,7 @@ class HaNotificationServer(private val context: Context) {
             durationMs = (duration * 1000).toLong(),
             position = position,
             // Home Assistant's library (0.1.x) sends "bkgcolor"; newer versions send "color".
-            color = (field("bkgcolor") ?: field("color"))?.let(::parseColor),
+            color = listOfNotNull(field("bkgcolor"), field("color")).firstOrNull { it.isNotBlank() }?.let(::parseColor),
             // 1 = 0% transparent … 5 = 100%; keep a little backing so the text stays readable.
             backgroundAlpha = (1f - (transparency - 1) * 0.25f).coerceAtLeast(0.15f),
             textScale = TEXT_SCALES[fontSize] ?: 1f,
@@ -347,9 +351,15 @@ class HaNotificationServer(private val context: Context) {
         )
     }
 
-    /** Home Assistant turns line breaks into `<br>` (the original receiver app shows HTML). */
-    private fun plainText(value: String): String =
-        value.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n").trim()
+    /**
+     * The original receiver app shows HTML, so Home Assistant turns line breaks into `<br>` and
+     * people use tags like `<b>` and entities like `&gt;`. Shown as plain text: tags dropped,
+     * entities decoded, line breaks kept (plain newlines too, which HTML would collapse).
+     */
+    private fun plainText(value: String): String {
+        if ('<' !in value && '&' !in value) return value.trim()
+        return Html.fromHtml(value.replace("\n", "<br>"), Html.FROM_HTML_MODE_LEGACY).toString().trim()
+    }
 
     /** "#F44336" or a name the integration knows; null for its default grey, which gets no accent. */
     private fun parseColor(value: String): Int? {
@@ -358,14 +368,23 @@ class HaNotificationServer(private val context: Context) {
         return runCatching { android.graphics.Color.parseColor(hex) }.getOrNull()
     }
 
-    /** Decoded at about [targetPx] wide, so a camera snapshot doesn't hold a full-size bitmap. */
+    /**
+     * Decoded with its longer side at about [targetPx], so neither a camera snapshot nor a very
+     * tall screenshot holds a full-size bitmap. Null if it isn't a picture or still too big.
+     */
     private fun decode(bytes: ByteArray, targetPx: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth <= 0) return null
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        val longest = maxOf(bounds.outWidth, bounds.outHeight)
         var sample = 1
-        while (bounds.outWidth / (sample * 2) >= targetPx) sample *= 2
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+        while (longest / (sample * 2) >= targetPx) sample *= 2
+        return try {
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+        } catch (e: OutOfMemoryError) {
+            Log.w(TAG, "Image too large to show (${bounds.outWidth}×${bounds.outHeight})")
+            null
+        }
     }
 
     /** Field name to its bytes. */
@@ -423,6 +442,8 @@ class HaNotificationServer(private val context: Context) {
         private const val MAX_DURATION_S = 600.0
         private const val ICON_PX = 128
         private const val IMAGE_PX = 960
+        private const val LOGGED_TITLE_CHARS = 60
+        private const val LOGGED_IMAGE_BYTES = 120
 
         private val PART_NAME = Regex("""(?:^|;)\s*name="([^"]*)"""", RegexOption.IGNORE_CASE)
 
